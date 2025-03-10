@@ -80,6 +80,17 @@ const App = () => {
     localStorage.setItem("expenses", JSON.stringify(expenses));
   }, [expenses]);
 
+  const handleUpload = () => {
+    const expenses = localStorage.getItem("expenses");
+    const blob = new Blob([expenses], { type: "application/json" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = "expenses.json";
+    a.click();
+    URL.revokeObjectURL(url);
+  };
+
   const handleLogout = () => {
     setAnchorEl(null);
     googleLogout();
@@ -155,7 +166,7 @@ const App = () => {
   };
 
   const openDeleteDialog = (index) => {
-    setExpenseToDelete(expenses[index]);
+    setExpenseToDelete(index);
     setIsDeleteDialogOpen(true);
   };
 
@@ -181,6 +192,7 @@ const App = () => {
               open={Boolean(anchorEl)}
               onClose={handleMenuClose}
             >
+              <MuiMenuItem onClick={handleUpload}>Upload</MuiMenuItem>
               <MuiMenuItem onClick={handleLogout}>Logout</MuiMenuItem>
             </Menu>
           </div>
@@ -466,7 +478,7 @@ const App = () => {
         <DialogTitle id="alert-dialog-title">{"Confirm Delete"}</DialogTitle>
         <DialogContent>
           <DialogContentText id="alert-dialog-description">
-            Are you sure you want to delete {expenseToDelete?.title}?
+            Are you sure you want to delete this expense?
           </DialogContentText>
         </DialogContent>
         <DialogActions>
