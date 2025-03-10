@@ -1,0 +1,87 @@
+body, html {
+    margin: 0;
+    padding: 0;
+    font-family: Arial, sans-serif;
+    background-color: #f0f0f0;
+    height: 100%;
+    width: 100%;
+}
+
+.floating-button.css-sghohy-MuiButtonBase-root-MuiButton-root {
+    position: fixed !important;
+    bottom: 20px !important;
+    right: 20px !important;
+    border-radius: 50% !important;
+    width: 60px !important;
+    height: 60px !important;
+    font-size: 30px !important;
+    display: flex !important;
+    justify-content: center !important;
+    align-items: center !important;
+    z-index: 1000 !important;
+}
+
+@media (max-width: 375px) {
+    .floating-button.css-sghohy-MuiButtonBase-root-MuiButton-root {
+        width: 50px !important;
+        height: 50px !important;
+        font-size: 24px !important;
+        border-radius: 50% !important;
+    }
+}
+
+#root {
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+}
+
+header {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    z-index: 1000;
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+    padding: 20px;
+}
+
+#root {
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+}
+
+header {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    z-index: 1000;
+}
+
+@media (max-width: 375px) {
+    header {
+        padding: 10px;
+        font-size: 18px;
+    }
+
+    .MuiButton-root {
+        font-size: 12px;
+        padding: 6px 12px;
+    }
+
+    .MuiTextField-root {
+        font-size: 14px;
+    }
+
+    .MuiTableCell-root {
+        padding: 6px;
+        font-size: 12px;
+    }
+
+    .MuiAvatar-root {
+        width: 30px;
+        height: 30px;
+    }
+}
