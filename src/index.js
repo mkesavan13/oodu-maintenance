@@ -2,6 +2,8 @@ import React, { useState, useEffect } from "react";
 import "./styles.scss";
 import { createRoot } from "react-dom/client";
 import { GoogleOAuthProvider, GoogleLogin, googleLogout } from "@react-oauth/google";
+import { jwtDecode } from "jwt-decode";
+import { gapi } from "gapi-script";
 import html2canvas from "html2canvas";
 import { LocalizationProvider, DatePicker } from "@mui/x-date-pickers";
 import { AdapterDateFns } from "@mui/x-date-pickers/AdapterDateFns";
@@ -48,7 +50,19 @@ const months = [
   "July", "August", "September", "October", "November", "December"
 ];
 
+const SCOPES = "https://www.googleapis.com/auth/drive.file";
+const CLIENT_ID = "203933737892-oickgtpjobqfjr52evid9hia2qm35qaq.apps.googleusercontent.com";
+
 const App = () => {
+  useEffect(() => {
+    function start() {
+      gapi.client.init({
+        clientId: CLIENT_ID,
+        scope: SCOPES,
+      });
+    }
+    gapi.load("client:auth2", start);
+  }, []);
   const [user, setUser] = useState(() => {
     const savedUser = localStorage.getItem("user");
     return savedUser ? JSON.parse(savedUser) : null;
@@ -67,11 +81,17 @@ const App = () => {
 
   const handleLoginSuccess = async (response) => {
     setAnchorEl(null);
-    const profile = response.profileObj;
+    const accessToken = gapi.auth.getToken().access_token;
+    const decoded = jwtDecode(response.credential);
+    const profile = {
+      name: decoded.name,
+      email: decoded.email,
+      picture: decoded.picture,
+      accessToken: accessToken,
+    };
     setUser(profile);
     localStorage.setItem("user", JSON.stringify(profile));
-    setUser(response);
-    localStorage.setItem("user", JSON.stringify(response));
+    localStorage.setItem("accessToken", accessToken);
   };
 
 
@@ -80,15 +100,34 @@ const App = () => {
     localStorage.setItem("expenses", JSON.stringify(expenses));
   }, [expenses]);
 
-  const handleUpload = () => {
+  const handleUpload = async () => {
     const expenses = localStorage.getItem("expenses");
     const blob = new Blob([expenses], { type: "application/json" });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement("a");
-    a.href = url;
-    a.download = "expenses.json";
-    a.click();
-    URL.revokeObjectURL(url);
+
+    const accessToken = gapi.auth.getToken().access_token;
+    const metadata = {
+      name: "expenses.json",
+      mimeType: "application/json",
+    };
+
+    const form = new FormData();
+    form.append(
+      "metadata",
+      new Blob([JSON.stringify(metadata)], { type: "application/json" })
+    );
+    form.append("file", blob);
+
+    const response = await fetch(
+      "https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart&fields=id",
+      {
+        method: "POST",
+        headers: new Headers({ Authorization: "Bearer " + accessToken }),
+        body: form,
+      }
+    );
+
+    const result = await response.json();
+    console.log("File uploaded to Google Drive with ID:", result.id);
   };
 
   const handleLogout = () => {
@@ -176,7 +215,7 @@ const App = () => {
   };
 
   return (
-    <GoogleOAuthProvider clientId="203933737892-oickgtpjobqfjr52evid9hia2qm35qaq.apps.googleusercontent.com">
+    <GoogleOAuthProvider clientId={CLIENT_ID}>
       <Header>
         <div>Oodu Maintenance</div>
         {user && (
@@ -200,7 +239,10 @@ const App = () => {
       </Header>
       {!user ? (
         <div style={{ display: "flex", justifyContent: "center", alignItems: "center", height: "80vh" }}>
-          <GoogleLogin onSuccess={handleLoginSuccess} onError={() => console.log("Login Failed")} />
+          <GoogleLogin
+            onSuccess={handleLoginSuccess}
+            onError={() => console.log("Login Failed")}
+          />
 
         </div>
       ) : (
