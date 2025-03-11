@@ -81,7 +81,7 @@ const App = () => {
 
   const handleLoginSuccess = async (response) => {
     setAnchorEl(null);
-    const accessToken = gapi.auth.getToken().access_token;
+    const accessToken = gapi.auth2.getAuthInstance().currentUser.get().getAuthResponse().access_token;
     const decoded = jwtDecode(response.credential);
     const profile = {
       name: decoded.name,
