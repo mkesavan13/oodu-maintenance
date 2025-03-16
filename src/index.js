@@ -83,39 +83,73 @@ const App = () => {
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
   const [expenseToDelete, setExpenseToDelete] = useState(null);
 
+  const [syncError, setSyncError] = useState(false);
+
   const syncData = async () => {
+    setSyncError(false);
     setAnchorEl(null);
     setIsSyncModalOpen(true);
     setPopoverAnchorEl(null);
     const localExpenses = JSON.parse(localStorage.getItem("expenses"));
     const accessToken = gapi.auth2.getAuthInstance().currentUser.get().getAuthResponse().access_token;
 
-    const response = await fetch(
-      "https://www.googleapis.com/drive/v3/files?q=name='expenses.json'&spaces=drive",
-      {
-        method: "GET",
-        headers: new Headers({ Authorization: "Bearer " + accessToken }),
-      }
-    );
-
-    const result = await response.json();
-    const fileId = result.files.length ? result.files[0].id : null;
-
-    if (fileId) {
-      const fileResponse = await fetch(
-        `https://www.googleapis.com/drive/v3/files/${fileId}?alt=media`,
+    try {
+      const response = await fetch(
+        "https://www.googleapis.com/drive/v3/files?q=name='expenses.json'&spaces=drive",
         {
           method: "GET",
           headers: new Headers({ Authorization: "Bearer " + accessToken }),
         }
       );
 
-      const driveExpenses = await fileResponse.json();
+      const result = await response.json();
+      const fileId = result.files.length ? result.files[0].id : null;
 
-      const localLastUpdated = localExpenses ? (localExpenses.last_updated ? parseInt(localExpenses.last_updated) : 0) : 0;
-      const driveLastUpdated = driveExpenses.last_updated ? parseInt(driveExpenses.last_updated) : 0;
+      if (fileId) {
+        const fileResponse = await fetch(
+          `https://www.googleapis.com/drive/v3/files/${fileId}?alt=media`,
+          {
+            method: "GET",
+            headers: new Headers({ Authorization: "Bearer " + accessToken }),
+          }
+        );
 
-      if (!localExpenses || !localExpenses.last_updated || (driveExpenses.last_updated && driveLastUpdated > localLastUpdated)) {
+        const driveExpenses = await fileResponse.json();
+
+        const localLastUpdated = localExpenses ? (localExpenses.last_updated ? parseInt(localExpenses.last_updated) : 0) : 0;
+        const driveLastUpdated = driveExpenses.last_updated ? parseInt(driveExpenses.last_updated) : 0;
+
+        if (!localExpenses || !localExpenses.last_updated || (driveExpenses.last_updated && driveLastUpdated > localLastUpdated)) {
+          localStorage.setItem("expenses", JSON.stringify(driveExpenses));
+          setExpenses(driveExpenses);
+        } else {
+          const updatedExpenses = { ...localExpenses, last_updated: Date.now().toString() };
+          localStorage.setItem("expenses", JSON.stringify(updatedExpenses));
+          setExpenses(updatedExpenses);
+
+          const blob = new Blob([JSON.stringify(updatedExpenses)], { type: "application/json" });
+          const metadata = {
+            name: "expenses.json",
+            mimeType: "application/json",
+          };
+
+          const form = new FormData();
+          form.append(
+            "metadata",
+            new Blob([JSON.stringify(metadata)], { type: "application/json" })
+          );
+          form.append("file", blob);
+
+          await fetch(
+            `https://www.googleapis.com/upload/drive/v3/files/${fileId}?uploadType=multipart`,
+            {
+              method: "PATCH",
+              headers: new Headers({ Authorization: "Bearer " + accessToken }),
+              body: form,
+            }
+          );
+        }
+      } else if (!localExpenses) {
         localStorage.setItem("expenses", JSON.stringify(driveExpenses));
         setExpenses(driveExpenses);
       } else {
@@ -137,45 +171,22 @@ const App = () => {
         form.append("file", blob);
 
         await fetch(
-          `https://www.googleapis.com/upload/drive/v3/files/${fileId}?uploadType=multipart`,
+          "https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart&fields=id",
           {
-            method: "PATCH",
+            method: "POST",
             headers: new Headers({ Authorization: "Bearer " + accessToken }),
             body: form,
           }
         );
       }
-    } else if (!localExpenses) {
-      localStorage.setItem("expenses", JSON.stringify(driveExpenses));
-      setExpenses(driveExpenses);
-    } else {
-      const updatedExpenses = { ...localExpenses, last_updated: Date.now().toString() };
-      localStorage.setItem("expenses", JSON.stringify(updatedExpenses));
-      setExpenses(updatedExpenses);
-
-      const blob = new Blob([JSON.stringify(updatedExpenses)], { type: "application/json" });
-      const metadata = {
-        name: "expenses.json",
-        mimeType: "application/json",
-      };
-
-      const form = new FormData();
-      form.append(
-        "metadata",
-        new Blob([JSON.stringify(metadata)], { type: "application/json" })
-      );
-      form.append("file", blob);
-
-      await fetch(
-        "https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart&fields=id",
-        {
-          method: "POST",
-          headers: new Headers({ Authorization: "Bearer " + accessToken }),
-          body: form,
-        }
-      );
+      if (!syncError) {
+        setIsSyncModalOpen(false);
+      }
+    } catch (error) {
+      console.error("Error syncing data:", error);
+      setIsSyncModalOpen(false);
+      setSyncError(true);
     }
-    setIsSyncModalOpen(false);
   };
 
   const handleLoginSuccess = async (response) => {
@@ -197,13 +208,16 @@ const App = () => {
   const handleLogout = async () => {
     setAnchorEl(null);
     setPopoverAnchorEl(null);
-    googleLogout();
-    await syncData();
-    await syncData();
-    localStorage.removeItem("accessToken");
-    localStorage.removeItem("expenses");
-    setUser(null);
-    localStorage.removeItem("user");
+    try {
+      googleLogout();
+      await syncData();
+      localStorage.removeItem("accessToken");
+      setUser(null);
+      localStorage.removeItem("user");
+    } catch (error) {
+      console.error("Error during logout:", error);
+      localStorage.removeItem("accessToken");
+    }
   };
 
   const handleAddExpense = () => {
@@ -640,7 +654,21 @@ const App = () => {
         aria-labelledby="sync-modal-title"
         aria-describedby="sync-modal-description"
       >
-        <Box
+        <Box>
+          <IconButton
+            onClick={() => setIsSyncModalOpen(false)}
+            style={{
+              position: "absolute",
+              top: "10px",
+              right: "10px",
+              cursor: "pointer",
+              fontSize: "20px",
+              fontWeight: "bold",
+            }}
+          >
+            <CloseIcon />
+          </IconButton>
+          <Box
           sx={{
             position: 'absolute',
             top: '50%',
@@ -658,7 +686,11 @@ const App = () => {
         >
           <div style={{ textAlign: 'center' }}>
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-              <CircularProgress style={{ marginRight: '10px' }} />
+              {syncError ? (
+                <CloseIcon style={{ color: 'red', marginRight: '10px' }} />
+              ) : (
+                <CircularProgress style={{ marginRight: '10px' }} />
+              )}
               <h2 id="sync-modal-title" style={{ marginTop: '20px', fontSize: '16px' }}>
                 Syncing your local and Google Drive data
                 <br />
@@ -666,6 +698,7 @@ const App = () => {
               </h2>
             </div>
           </div>
+          </Box>
         </Box>
       </Modal>
     </GoogleOAuthProvider>
