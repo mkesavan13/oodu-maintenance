@@ -363,7 +363,7 @@ const App = () => {
                 <h3>{user.name}</h3>
                 <p>{user.email}</p>
                 <Box sx={{ display: 'flex', justifyContent: 'space-between', mt: 2 }}>
-                  <Button variant="outlined" color="primary" onClick={syncData}>
+                  <Button variant="outlined" style={{ color: '#5aac42', borderColor: '#5aac42' }} onClick={syncData}>
                     Sync Now
                   </Button>
                   <Button variant="outlined" color="error" onClick={handleLogout}>
@@ -380,8 +380,8 @@ const App = () => {
           {gapiReady ? (
             <Button
               variant="outlined"
-              color="primary"
-              startIcon={<GoogleIcon style={{ color: '#4285F4' }} />}
+              style={{ color: '#5aac42', borderColor: '#5aac42' }}
+              startIcon={<GoogleIcon style={{ color: '#5aac42' }} />}
               onClick={() => gapi.auth2.getAuthInstance().signIn().then(handleLoginSuccess)}
             >
               Sign in with Google
@@ -479,8 +479,8 @@ const App = () => {
                   </MenuItem>
                 ))}
               </TextField>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '10px' }}>
-                <Button variant="contained" color="primary" onClick={handleAddExpense}>
+              <div style={{ display: 'flex', justifyContent: 'flex-end', alignItems: 'center', marginTop: '10px' }}>
+                <Button variant="contained" style={{ backgroundColor: '#5aac42' }} onClick={handleAddExpense}>
                   {editingExpenseIndex !== null ? "Save Changes" : "Add Expense"}
                 </Button>
               </div>
@@ -489,7 +489,7 @@ const App = () => {
 
           <Button
             variant="contained"
-            color="primary"
+            style={{ backgroundColor: '#5aac42' }}
             onClick={handleOpenModal}
             className="floating-button css-sghohy-MuiButtonBase-root-MuiButton-root"
           >
@@ -513,7 +513,7 @@ const App = () => {
                 {(!expenses[selectedDate.getMonth() + '-' + selectedDate.getFullYear()] || expenses[selectedDate.getMonth() + '-' + selectedDate.getFullYear()].length === 0) ? (
                   <TableRow>
                     <TableCell colSpan={5} align="center">
-                      <Button variant="contained" color="primary" onClick={handleOpenModal}>
+                      <Button variant="contained" style={{ backgroundColor: '#5aac42' }} onClick={handleOpenModal}>
                         Add Expenses
                       </Button>
                     </TableCell>
@@ -533,7 +533,7 @@ const App = () => {
                         }).join(", ")}
                       </TableCell>
                       <TableCell>
-                        <IconButton color="primary" onClick={() => handleEditExpense(index)}>
+                        <IconButton style={{ color: '#5aac42' }} onClick={() => handleEditExpense(index)}>
                           <EditIcon />
                         </IconButton>
                         <IconButton style={{ color: 'red' }} onClick={() => openDeleteDialog(index)}>
@@ -655,7 +655,7 @@ const App = () => {
             </TableContainer>
           </div>
 
-          <Button variant="contained" color="primary" onClick={handleDownload} style={{ marginTop: "10px" }}>
+          <Button variant="contained" style={{ backgroundColor: '#5aac42', marginTop: "10px" }} onClick={handleDownload}>
             Download Image
           </Button>
           </div>
