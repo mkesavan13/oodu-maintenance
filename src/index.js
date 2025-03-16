@@ -199,6 +199,9 @@ const App = () => {
     setPopoverAnchorEl(null);
     googleLogout();
     await syncData();
+    await syncData();
+    localStorage.removeItem("accessToken");
+    localStorage.removeItem("expenses");
     setUser(null);
     localStorage.removeItem("user");
   };
