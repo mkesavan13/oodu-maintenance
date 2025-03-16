@@ -55,15 +55,35 @@ const SCOPES = "https://www.googleapis.com/auth/drive.file";
 const CLIENT_ID = "203933737892-oickgtpjobqfjr52evid9hia2qm35qaq.apps.googleusercontent.com";
 
 const App = () => {
+  const [gapiReady, setGapiReady] = useState(false);
+
   useEffect(() => {
     async function start() {
-      await gapi.client.init({
-        clientId: CLIENT_ID,
-        scope: SCOPES,
-      });
+      try {
+        await gapi.client.init({
+          clientId: CLIENT_ID,
+          scope: SCOPES,
+        });
+
+        gapi.auth2.getAuthInstance().currentUser.listen((currentUser) => {
+          if (currentUser.isSignedIn()) {
+            const authResponse = currentUser.getAuthResponse();
+            const accessToken = authResponse.access_token;
+            localStorage.setItem("accessToken", accessToken);
+            console.log("Access Token from gapi (useEffect):", accessToken);
+          } else {
+            localStorage.removeItem("accessToken");
+            console.log("User signed out from gapi");
+          }
+        });
+        setGapiReady(true); // Set gapiReady to true after successful initialization
+      } catch (error) {
+        console.error("Error initializing gapi:", error);
+      }
     }
     gapi.load("client:auth2", start);
   }, []);
+
   const [user, setUser] = useState(() => {
     const savedUser = localStorage.getItem("user");
     return savedUser ? JSON.parse(savedUser) : null;
@@ -191,18 +211,29 @@ const App = () => {
 
   const handleLoginSuccess = async (response) => {
     setAnchorEl(null);
-    const accessToken = gapi.auth2.getAuthInstance().currentUser.get().getAuthResponse().access_token;
     const decoded = jwtDecode(response.credential);
     const profile = {
       name: decoded.name,
       email: decoded.email,
       picture: decoded.picture,
-      accessToken: accessToken,
     };
     setUser(profile);
     localStorage.setItem("user", JSON.stringify(profile));
-    localStorage.setItem("accessToken", accessToken);
-    await syncData();
+
+    // Explicitly sign in with gapi after successful login
+    const authInstance = gapi.auth2.getAuthInstance();
+    authInstance.signIn().then(() => {
+      const currentUser = authInstance.currentUser.get();
+      if (currentUser.isSignedIn()) {
+        const authResponse = currentUser.getAuthResponse();
+        const accessToken = authResponse.access_token;
+        localStorage.setItem("accessToken", accessToken);
+        syncData();
+        console.log("Access Token from gapi (handleLoginSuccess):", accessToken);
+      } else {
+        console.log("User not signed in with gapi");
+      }
+    });
   };
 
   const handleLogout = async () => {
@@ -349,13 +380,16 @@ const App = () => {
       </Header>
       {!user ? (
         <div style={{ display: "flex", justifyContent: "center", alignItems: "center", height: "80vh" }}>
-          <GoogleLogin
-            onSuccess={handleLoginSuccess}
-            onError={() => console.log("Login Failed")}
-            useOneTap
-            prompt="consent"
-          />
-
+          {gapiReady ? ( // Conditionally render GoogleLogin
+            <GoogleLogin
+              onSuccess={handleLoginSuccess}
+              onError={() => console.log("Login Failed")}
+              useOneTap
+              prompt="consent"
+            />
+          ) : (
+            <div>Loading...</div> // Or any other loading indicator
+          )}
         </div>
       ) : (
         <div style={{ padding: "20px" }}>
