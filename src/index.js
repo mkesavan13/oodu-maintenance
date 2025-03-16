@@ -12,7 +12,8 @@ import CloseIcon from '@mui/icons-material/Close';
 import AddIcon from '@mui/icons-material/Add';
 import { 
   Edit as EditIcon, 
-  Delete as DeleteIcon 
+  Delete as DeleteIcon,
+  Google as GoogleIcon
 } from '@mui/icons-material';
 import {
   Button,
@@ -378,8 +379,9 @@ const App = () => {
         <div style={{ display: "flex", justifyContent: "center", alignItems: "center", height: "80vh" }}>
           {gapiReady ? (
             <Button
-              variant="contained"
+              variant="outlined"
               color="primary"
+              startIcon={<GoogleIcon style={{ color: '#4285F4' }} />}
               onClick={() => gapi.auth2.getAuthInstance().signIn().then(handleLoginSuccess)}
             >
               Sign in with Google
