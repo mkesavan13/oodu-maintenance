@@ -238,6 +238,7 @@ const App = () => {
       googleLogout();
       await syncData();
       localStorage.removeItem("accessToken");
+      localStorage.removeItem("expenses");
       setUser(null);
       localStorage.removeItem("user");
     } catch (error) {
