@@ -7,7 +7,7 @@ import { gapi } from "gapi-script";
 import html2canvas from "html2canvas";
 import { LocalizationProvider, DatePicker } from "@mui/x-date-pickers";
 import { AdapterDateFns } from "@mui/x-date-pickers/AdapterDateFns";
-import { Modal, Box, IconButton, Dialog, DialogActions, DialogContent, DialogContentText, DialogTitle } from "@mui/material";
+import { Modal, Box, IconButton, Dialog, DialogActions, DialogContent, DialogContentText, DialogTitle, Popover } from "@mui/material";
 import CloseIcon from '@mui/icons-material/Close';
 import AddIcon from '@mui/icons-material/Add';
 import { 
@@ -26,6 +26,7 @@ import {
   TableRow,
   Paper,
   Avatar,
+  CircularProgress,
   Menu,
   MenuItem as MuiMenuItem,
 } from "@mui/material";
@@ -55,8 +56,8 @@ const CLIENT_ID = "203933737892-oickgtpjobqfjr52evid9hia2qm35qaq.apps.googleuser
 
 const App = () => {
   useEffect(() => {
-    function start() {
-      gapi.client.init({
+    async function start() {
+      await gapi.client.init({
         clientId: CLIENT_ID,
         scope: SCOPES,
       });
@@ -69,15 +70,113 @@ const App = () => {
   });
   const [anchorEl, setAnchorEl] = useState(null);
   const [selectedDate, setSelectedDate] = useState(new Date());
+  const [isSyncModalOpen, setIsSyncModalOpen] = useState(false);
+  const [popoverAnchorEl, setPopoverAnchorEl] = useState(null);
   const [expenses, setExpenses] = useState(() => {
     const savedExpenses = localStorage.getItem("expenses");
     return savedExpenses ? JSON.parse(savedExpenses) : {};
   });
   const [newExpense, setNewExpense] = useState({ title: "", amount: "", selectedFloors: ["Ground Floor", "First Floor", "Second Floor"] });
+  const lastUpdated = expenses.last_updated ? new Date(parseInt(expenses.last_updated)).toLocaleString() : undefined;
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingExpenseIndex, setEditingExpenseIndex] = useState(null);
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
   const [expenseToDelete, setExpenseToDelete] = useState(null);
+
+  const syncData = async () => {
+    setAnchorEl(null);
+    setIsSyncModalOpen(true);
+    setPopoverAnchorEl(null);
+    const localExpenses = JSON.parse(localStorage.getItem("expenses"));
+    const accessToken = gapi.auth2.getAuthInstance().currentUser.get().getAuthResponse().access_token;
+
+    const response = await fetch(
+      "https://www.googleapis.com/drive/v3/files?q=name='expenses.json'&spaces=drive",
+      {
+        method: "GET",
+        headers: new Headers({ Authorization: "Bearer " + accessToken }),
+      }
+    );
+
+    const result = await response.json();
+    const fileId = result.files.length ? result.files[0].id : null;
+
+    if (fileId) {
+      const fileResponse = await fetch(
+        `https://www.googleapis.com/drive/v3/files/${fileId}?alt=media`,
+        {
+          method: "GET",
+          headers: new Headers({ Authorization: "Bearer " + accessToken }),
+        }
+      );
+
+      const driveExpenses = await fileResponse.json();
+
+      const localLastUpdated = localExpenses ? (localExpenses.last_updated ? parseInt(localExpenses.last_updated) : 0) : 0;
+      const driveLastUpdated = driveExpenses.last_updated ? parseInt(driveExpenses.last_updated) : 0;
+
+      if (!localExpenses || !localExpenses.last_updated || (driveExpenses.last_updated && driveLastUpdated > localLastUpdated)) {
+        localStorage.setItem("expenses", JSON.stringify(driveExpenses));
+        setExpenses(driveExpenses);
+      } else {
+        const updatedExpenses = { ...localExpenses, last_updated: Date.now().toString() };
+        localStorage.setItem("expenses", JSON.stringify(updatedExpenses));
+        setExpenses(updatedExpenses);
+
+        const blob = new Blob([JSON.stringify(updatedExpenses)], { type: "application/json" });
+        const metadata = {
+          name: "expenses.json",
+          mimeType: "application/json",
+        };
+
+        const form = new FormData();
+        form.append(
+          "metadata",
+          new Blob([JSON.stringify(metadata)], { type: "application/json" })
+        );
+        form.append("file", blob);
+
+        await fetch(
+          `https://www.googleapis.com/upload/drive/v3/files/${fileId}?uploadType=multipart`,
+          {
+            method: "PATCH",
+            headers: new Headers({ Authorization: "Bearer " + accessToken }),
+            body: form,
+          }
+        );
+      }
+    } else if (!localExpenses) {
+      localStorage.setItem("expenses", JSON.stringify(driveExpenses));
+      setExpenses(driveExpenses);
+    } else {
+      const updatedExpenses = { ...localExpenses, last_updated: Date.now().toString() };
+      localStorage.setItem("expenses", JSON.stringify(updatedExpenses));
+      setExpenses(updatedExpenses);
+
+      const blob = new Blob([JSON.stringify(updatedExpenses)], { type: "application/json" });
+      const metadata = {
+        name: "expenses.json",
+        mimeType: "application/json",
+      };
+
+      const form = new FormData();
+      form.append(
+        "metadata",
+        new Blob([JSON.stringify(metadata)], { type: "application/json" })
+      );
+      form.append("file", blob);
+
+      await fetch(
+        "https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart&fields=id",
+        {
+          method: "POST",
+          headers: new Headers({ Authorization: "Bearer " + accessToken }),
+          body: form,
+        }
+      );
+    }
+    setIsSyncModalOpen(false);
+  };
 
   const handleLoginSuccess = async (response) => {
     setAnchorEl(null);
@@ -92,47 +191,14 @@ const App = () => {
     setUser(profile);
     localStorage.setItem("user", JSON.stringify(profile));
     localStorage.setItem("accessToken", accessToken);
+    await syncData();
   };
 
-
-  useEffect(() => {
-    const monthYearKey = `${selectedDate.getMonth()}-${selectedDate.getFullYear()}`;
-    localStorage.setItem("expenses", JSON.stringify(expenses));
-  }, [expenses]);
-
-  const handleUpload = async () => {
-    const expenses = localStorage.getItem("expenses");
-    const blob = new Blob([expenses], { type: "application/json" });
-
-    const accessToken = gapi.auth.getToken().access_token;
-    const metadata = {
-      name: "expenses.json",
-      mimeType: "application/json",
-    };
-
-    const form = new FormData();
-    form.append(
-      "metadata",
-      new Blob([JSON.stringify(metadata)], { type: "application/json" })
-    );
-    form.append("file", blob);
-
-    const response = await fetch(
-      "https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart&fields=id",
-      {
-        method: "POST",
-        headers: new Headers({ Authorization: "Bearer " + accessToken }),
-        body: form,
-      }
-    );
-
-    const result = await response.json();
-    console.log("File uploaded to Google Drive with ID:", result.id);
-  };
-
-  const handleLogout = () => {
+  const handleLogout = async () => {
     setAnchorEl(null);
+    setPopoverAnchorEl(null);
     googleLogout();
+    await syncData();
     setUser(null);
     localStorage.removeItem("user");
   };
@@ -147,7 +213,9 @@ const App = () => {
       } else {
         updatedExpenses.push(newExpense);
       }
-      setExpenses({ ...expenses, [monthYearKey]: updatedExpenses });
+      const updatedExpensesObj = { ...expenses, [monthYearKey]: updatedExpenses, last_updated: Date.now().toString() };
+      localStorage.setItem("expenses", JSON.stringify(updatedExpensesObj));
+      setExpenses(updatedExpensesObj);
       setIsModalOpen(false);
       setNewExpense({ title: "", amount: "", selectedFloors: [] });
     }
@@ -172,7 +240,7 @@ const App = () => {
 
 
   const handleMenuOpen = (event) => {
-    setAnchorEl(event.currentTarget);
+    setPopoverAnchorEl(event.currentTarget);
   };
 
   const handleMenuClose = () => {
@@ -199,7 +267,9 @@ const App = () => {
   const handleDeleteExpense = () => {
     const monthYearKey = `${selectedDate.getMonth()}-${selectedDate.getFullYear()}`;
     const updatedExpenses = (expenses[monthYearKey] || []).filter((_, i) => i !== expenseToDelete);
-    setExpenses({ ...expenses, [monthYearKey]: updatedExpenses });
+    const updatedExpensesObj = { ...expenses, [monthYearKey]: updatedExpenses, last_updated: Date.now().toString() };
+    localStorage.setItem("expenses", JSON.stringify(updatedExpensesObj));
+    setExpenses(updatedExpensesObj);
     setIsDeleteDialogOpen(false);
     setExpenseToDelete(null);
   };
@@ -226,14 +296,37 @@ const App = () => {
               onClick={handleMenuOpen}
               style={{ cursor: "pointer" }}
             />
-            <Menu
-              anchorEl={anchorEl}
-              open={Boolean(anchorEl)}
-              onClose={handleMenuClose}
+            <Popover
+              open={Boolean(popoverAnchorEl)}
+              anchorEl={popoverAnchorEl}
+              onClose={() => setPopoverAnchorEl(null)}
+              anchorOrigin={{
+                vertical: 'bottom',
+                horizontal: 'center',
+              }}
+              transformOrigin={{
+                vertical: 'top',
+                horizontal: 'center',
+              }}
             >
-              <MuiMenuItem onClick={handleUpload}>Upload</MuiMenuItem>
-              <MuiMenuItem onClick={handleLogout}>Logout</MuiMenuItem>
-            </Menu>
+              <Box sx={{ p: 2, textAlign: 'center' }}>
+                <Avatar
+                  src={user.picture}
+                  alt={user.name}
+                  sx={{ width: 80, height: 80, margin: '0 auto' }}
+                />
+                <h3>{user.name}</h3>
+                <p>{user.email}</p>
+                <Box sx={{ display: 'flex', justifyContent: 'space-between', mt: 2 }}>
+                  <Button variant="outlined" color="primary" onClick={syncData}>
+                    Sync Now
+                  </Button>
+                  <Button variant="outlined" color="error" onClick={handleLogout}>
+                    Logout
+                  </Button>
+                </Box>
+              </Box>
+            </Popover>
           </div>
         )}
       </Header>
@@ -242,12 +335,14 @@ const App = () => {
           <GoogleLogin
             onSuccess={handleLoginSuccess}
             onError={() => console.log("Login Failed")}
+            useOneTap
           />
 
         </div>
       ) : (
         <div style={{ padding: "20px" }}>
-          <LocalizationProvider dateAdapter={AdapterDateFns}>
+          <div style={{ display: "flex", alignItems: "center", marginBottom: "20px" }}>
+            <LocalizationProvider dateAdapter={AdapterDateFns}>
             <DatePicker
               views={['year', 'month']}
               label="Select Date"
@@ -261,7 +356,11 @@ const App = () => {
               }}
               renderInput={(params) => <TextField {...params} fullWidth margin="normal" />}
             />
-          </LocalizationProvider>
+            </LocalizationProvider>
+            <div style={{ marginLeft: "20px", fontSize: "12px", color: "gray" }}>
+              <strong>Last updated:</strong> {lastUpdated}
+            </div>
+          </div>
           <Modal
             open={isModalOpen}
             onClose={handleCloseModal}
@@ -431,8 +530,8 @@ const App = () => {
             </Table>
           </TableContainer>
           <div id="download-canvas" style={{ display: "none", position: "absolute", top: 0, left: 0, border: "1px solid black", padding: "20px", width: "800px" }}>
-            <h2>Monthly Maintenance - {months[selectedDate.getMonth()]} {selectedDate.getFullYear()}</h2>
-            <TableContainer component={Paper} style={{ marginTop: "20px" }}>
+            <h2>Thiruvanmiyur Monthly Maintenance - {months[selectedDate.getMonth()]} {selectedDate.getFullYear()}</h2>
+            <TableContainer component={Paper} style={{ marginTop: "20px", boxShadow: "none" }}>
               <Table id="expense-table" style={{ tableLayout: "fixed", width: "100%" }}>
                 <TableHead>
                   <TableRow>
@@ -471,7 +570,7 @@ const App = () => {
             </TableContainer>
 
             <h2>Floor-wise Maintenance Breakup</h2>
-            <TableContainer component={Paper} style={{ marginTop: "20px" }}>
+            <TableContainer component={Paper} style={{ marginTop: "20px", boxShadow: "none" }}>
               <Table id="floor-table" style={{ tableLayout: "fixed", width: "100%" }}>
                 <TableHead>
                   <TableRow>
@@ -532,6 +631,40 @@ const App = () => {
           </Button>
         </DialogActions>
       </Dialog>
+      <Modal
+        open={isSyncModalOpen}
+        onClose={() => setIsSyncModalOpen(false)}
+        aria-labelledby="sync-modal-title"
+        aria-describedby="sync-modal-description"
+      >
+        <Box
+          sx={{
+            position: 'absolute',
+            top: '50%',
+            left: '50%',
+            transform: 'translate(-50%, -50%)',
+            width: '90%',
+            maxWidth: 525,
+            bgcolor: 'background.paper',
+            boxShadow: 24,
+            border: 'none',
+            outline: 'none',
+            p: 2,
+            textAlign: 'center',
+          }}
+        >
+          <div style={{ textAlign: 'center' }}>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+              <CircularProgress style={{ marginRight: '10px' }} />
+              <h2 id="sync-modal-title" style={{ marginTop: '20px', fontSize: '16px' }}>
+                Syncing your local and Google Drive data
+                <br />
+                Please wait...
+              </h2>
+            </div>
+          </div>
+        </Box>
+      </Modal>
     </GoogleOAuthProvider>
   );
 };
