@@ -353,6 +353,7 @@ const App = () => {
             onSuccess={handleLoginSuccess}
             onError={() => console.log("Login Failed")}
             useOneTap
+            prompt="consent"
           />
 
         </div>
