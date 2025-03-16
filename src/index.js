@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from "react";
 import "./styles.scss";
 import { createRoot } from "react-dom/client";
-import { GoogleOAuthProvider, GoogleLogin, googleLogout } from "@react-oauth/google";
+import { GoogleOAuthProvider, googleLogout } from "@react-oauth/google";
 import { jwtDecode } from "jwt-decode";
 import { gapi } from "gapi-script";
 import html2canvas from "html2canvas";
@@ -60,13 +60,15 @@ const App = () => {
   useEffect(() => {
     async function start() {
       try {
-        await gapi.client.init({
-          clientId: CLIENT_ID,
+        await gapi.auth2.init({
+          client_id: CLIENT_ID,
           scope: SCOPES,
         });
 
-        gapi.auth2.getAuthInstance().currentUser.listen((currentUser) => {
-          if (currentUser.isSignedIn()) {
+        const authInstance = gapi.auth2.getAuthInstance();
+        authInstance.isSignedIn.listen((isSignedIn) => {
+          if (isSignedIn) {
+            const currentUser = authInstance.currentUser.get();
             const authResponse = currentUser.getAuthResponse();
             const accessToken = authResponse.access_token;
             localStorage.setItem("accessToken", accessToken);
@@ -211,29 +213,22 @@ const App = () => {
 
   const handleLoginSuccess = async (response) => {
     setAnchorEl(null);
-    const decoded = jwtDecode(response.credential);
-    const profile = {
-      name: decoded.name,
-      email: decoded.email,
-      picture: decoded.picture,
-    };
-    setUser(profile);
-    localStorage.setItem("user", JSON.stringify(profile));
-
-    // Explicitly sign in with gapi after successful login
-    const authInstance = gapi.auth2.getAuthInstance();
-    authInstance.signIn().then(() => {
-      const currentUser = authInstance.currentUser.get();
-      if (currentUser.isSignedIn()) {
-        const authResponse = currentUser.getAuthResponse();
-        const accessToken = authResponse.access_token;
-        localStorage.setItem("accessToken", accessToken);
-        syncData();
-        console.log("Access Token from gapi (handleLoginSuccess):", accessToken);
-      } else {
-        console.log("User not signed in with gapi");
-      }
-    });
+    console.log("======", response);
+    if (response) {
+      const profile = {
+        name: response.wt.Ad,
+        email: response.wt.cu,
+        picture: response.wt.hK,
+      };
+      setUser(profile);
+      localStorage.setItem("user", JSON.stringify(profile));
+      const accessToken = response.xc.access_token;
+      localStorage.setItem("accessToken", accessToken);
+      syncData();
+      console.log("Access Token from gapi (handleLoginSuccess):", accessToken);
+    } else {
+      console.error("Login response does not contain access token");
+    }
   };
 
   const handleLogout = async () => {
@@ -380,16 +375,17 @@ const App = () => {
       </Header>
       {!user ? (
         <div style={{ display: "flex", justifyContent: "center", alignItems: "center", height: "80vh" }}>
-          {gapiReady ? ( // Conditionally render GoogleLogin
-            <GoogleLogin
-              onSuccess={handleLoginSuccess}
-              onError={() => console.log("Login Failed")}
-              useOneTap
-              prompt="consent"
-            />
-          ) : (
-            <div>Loading...</div> // Or any other loading indicator
-          )}
+          {gapiReady ? (
+            <Button
+              variant="contained"
+              color="primary"
+              onClick={() => gapi.auth2.getAuthInstance().signIn().then(handleLoginSuccess)}
+            >
+              Sign in with Google
+            </Button>
+          ) : ( 
+            <div>Loading...</div>
+          )} 
         </div>
       ) : (
         <div style={{ padding: "20px" }}>
