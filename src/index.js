@@ -245,9 +245,11 @@ const App = () => {
       localStorage.removeItem("expenses");
       setUser(null);
       localStorage.removeItem("user");
+      setIsLogoutDialogOpen(false);
     } catch (error) {
       console.error("Error during logout:", error);
       localStorage.removeItem("accessToken");
+      setIsLogoutDialogOpen(false);
     }
   };
 
@@ -680,7 +682,7 @@ const App = () => {
       >
         <DialogContent>
           <DialogContentText id="alert-dialog-description">
-            Are you sure you want to delete <strong>{expenses[selectedDate.getMonth() + '-' + selectedDate.getFullYear()][expenseToDelete]?.title}</strong>?
+            Are you sure you want to delete <strong>{expenses[selectedDate.getMonth() + '-' + selectedDate.getFullYear()] && expenses[selectedDate.getMonth() + '-' + selectedDate.getFullYear()][expenseToDelete]?.title}</strong>?
           </DialogContentText>
         </DialogContent>
         <DialogActions>
