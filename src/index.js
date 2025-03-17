@@ -13,7 +13,8 @@ import AddIcon from '@mui/icons-material/Add';
 import { 
   Edit as EditIcon, 
   Delete as DeleteIcon,
-  Google as GoogleIcon
+  Google as GoogleIcon,
+  Download as DownloadIcon
 } from '@mui/icons-material';
 import {
   Button,
@@ -232,6 +233,8 @@ const App = () => {
     }
   };
 
+  const [isLogoutDialogOpen, setIsLogoutDialogOpen] = useState(false);
+
   const handleLogout = async () => {
     setAnchorEl(null);
     setPopoverAnchorEl(null);
@@ -283,6 +286,14 @@ const App = () => {
     });
   };
 
+
+  const openLogoutDialog = () => {
+    setIsLogoutDialogOpen(true);
+  };
+
+  const closeLogoutDialog = () => {
+    setIsLogoutDialogOpen(false);
+  };
 
   const handleMenuOpen = (event) => {
     setPopoverAnchorEl(event.currentTarget);
@@ -366,7 +377,7 @@ const App = () => {
                   <Button variant="outlined" style={{ color: '#5aac42', borderColor: '#5aac42' }} onClick={syncData}>
                     Sync Now
                   </Button>
-                  <Button variant="outlined" color="error" onClick={handleLogout}>
+                  <Button variant="outlined" color="error" onClick={openLogoutDialog}>
                     Logout
                   </Button>
                 </Box>
@@ -655,7 +666,7 @@ const App = () => {
             </TableContainer>
           </div>
 
-          <Button variant="contained" style={{ backgroundColor: '#5aac42', marginTop: "10px" }} onClick={handleDownload}>
+          <Button variant="contained" style={{ backgroundColor: '#5aac42', marginTop: "10px" }} onClick={handleDownload} startIcon={<DownloadIcon />}>
             Download Image
           </Button>
           </div>
@@ -667,14 +678,13 @@ const App = () => {
         aria-labelledby="alert-dialog-title"
         aria-describedby="alert-dialog-description"
       >
-        <DialogTitle id="alert-dialog-title">{"Confirm Delete"}</DialogTitle>
         <DialogContent>
           <DialogContentText id="alert-dialog-description">
-            Are you sure you want to delete this expense?
+            Are you sure you want to delete <strong>{expenses[selectedDate.getMonth() + '-' + selectedDate.getFullYear()][expenseToDelete]?.title}</strong>?
           </DialogContentText>
         </DialogContent>
         <DialogActions>
-          <Button onClick={closeDeleteDialog} color="primary">
+          <Button onClick={closeDeleteDialog} style={{ color: '#5aac42' }}>
             Cancel
           </Button>
           <Button onClick={handleDeleteExpense} color="error" autoFocus>
@@ -735,6 +745,26 @@ const App = () => {
           </Box>
         </Box>
       </Modal>
+      <Dialog
+        open={isLogoutDialogOpen}
+        onClose={closeLogoutDialog}
+        aria-labelledby="logout-dialog-title"
+        aria-describedby="logout-dialog-description"
+      >
+        <DialogContent>
+          <DialogContentText id="logout-dialog-description">
+            Are you sure you want to logout?
+          </DialogContentText>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={closeLogoutDialog} style={{ color: '#5aac42' }}>
+            Cancel
+          </Button>
+          <Button onClick={handleLogout} color="error" autoFocus>
+            Logout
+          </Button>
+        </DialogActions>
+      </Dialog>
     </GoogleOAuthProvider>
   );
 };
