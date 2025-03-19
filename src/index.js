@@ -14,7 +14,9 @@ import {
   Edit as EditIcon, 
   Delete as DeleteIcon,
   Google as GoogleIcon,
-  Download as DownloadIcon
+  Download as DownloadIcon,
+  CheckCircle as CheckCircleIcon,
+  Cancel as CancelIcon
 } from '@mui/icons-material';
 import {
   Button,
@@ -92,7 +94,6 @@ const App = () => {
     const savedUser = localStorage.getItem("user");
     return savedUser ? JSON.parse(savedUser) : null;
   });
-  const [anchorEl, setAnchorEl] = useState(null);
   const [selectedDate, setSelectedDate] = useState(new Date());
   const [isSyncModalOpen, setIsSyncModalOpen] = useState(false);
   const [popoverAnchorEl, setPopoverAnchorEl] = useState(null);
@@ -100,7 +101,7 @@ const App = () => {
     const savedExpenses = localStorage.getItem("expenses");
     return savedExpenses ? JSON.parse(savedExpenses) : {};
   });
-  const [newExpense, setNewExpense] = useState({ title: "", amount: "", selectedFloors: ["Ground Floor", "First Floor", "Second Floor"], remarks: "" });
+  const [newExpense, setNewExpense] = useState({ title: "", amount: "", selectedFloors: ["Ground Floor", "First Floor", "Second Floor"], remarks: "", paid: false });
   const lastUpdated = expenses.last_updated ? new Date(parseInt(expenses.last_updated)).toLocaleString() : undefined;
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingExpenseIndex, setEditingExpenseIndex] = useState(null);
@@ -111,7 +112,6 @@ const App = () => {
 
   const syncData = async () => {
     setSyncError(false);
-    setAnchorEl(null);
     setIsSyncModalOpen(true);
     setPopoverAnchorEl(null);
     const localExpenses = JSON.parse(localStorage.getItem("expenses"));
@@ -155,7 +155,7 @@ const App = () => {
           const metadata = {
             name: "expenses.json",
             mimeType: "application/json",
-          };
+          }
 
           const form = new FormData();
           form.append(
@@ -214,8 +214,6 @@ const App = () => {
   };
 
   const handleLoginSuccess = async (response) => {
-    setAnchorEl(null);
-    console.log("======", response);
     if (response) {
       const profile = {
         name: response.wt.Ad,
@@ -236,7 +234,6 @@ const App = () => {
   const [isLogoutDialogOpen, setIsLogoutDialogOpen] = useState(false);
 
   const handleLogout = async () => {
-    setAnchorEl(null);
     setPopoverAnchorEl(null);
     try {
       googleLogout();
@@ -251,6 +248,16 @@ const App = () => {
       localStorage.removeItem("accessToken");
       setIsLogoutDialogOpen(false);
     }
+  };
+
+  const handleMarkAsPaid = (index) => {
+    const monthYearKey = `${selectedDate.getMonth()}-${selectedDate.getFullYear()}`;
+    const updatedExpenses = [...(expenses[monthYearKey] || [])];
+    const currentPaidStatus = updatedExpenses[index].paid;
+    updatedExpenses[index] = { ...updatedExpenses[index], paid: currentPaidStatus === undefined ? true : !currentPaidStatus };
+    const updatedExpensesObj = { ...expenses, [monthYearKey]: updatedExpenses, last_updated: Date.now().toString() };
+    localStorage.setItem("expenses", JSON.stringify(updatedExpensesObj));
+    setExpenses(updatedExpensesObj);
   };
 
   const handleAddExpense = () => {
@@ -278,7 +285,6 @@ const App = () => {
     const year = selectedDate.getFullYear();
     const fileName = `Maintenance_${month}_${year}.png`;
 
-
     downloadContainer.style.display = "block"; // Make the canvas visible
     html2canvas(downloadContainer).then((canvas) => {
       downloadContainer.style.display = "none"; // Hide the canvas after capturing
@@ -288,7 +294,6 @@ const App = () => {
       link.click();
     });
   };
-
 
   const openLogoutDialog = () => {
     setIsLogoutDialogOpen(true);
@@ -302,15 +307,12 @@ const App = () => {
     setPopoverAnchorEl(event.currentTarget);
   };
 
-  const handleMenuClose = () => {
-    setAnchorEl(null);
-  };
-
   const handleOpenModal = () => {
     setNewExpense({ title: "", amount: "", selectedFloors: [], remarks: "" });
     setEditingExpenseIndex(null);
     setIsModalOpen(true);
   };
+
   const handleCloseModal = () => {
     setIsModalOpen(false);
     setEditingExpenseIndex(null);
@@ -343,7 +345,7 @@ const App = () => {
     setExpenseToDelete(null);
   };
 
-  const hasRemarks = (expenses[selectedDate.getMonth() + '-' + selectedDate.getFullYear()] || []).some(expense => expense.remarks);
+  const hasRemarks = (expenses[selectedDate.getMonth() + '-' + selectedDate.getFullYear()] || []).some(expense => expense.remarks || expense.paid);
 
   return (
     <GoogleOAuthProvider clientId={CLIENT_ID}>
@@ -558,6 +560,9 @@ const App = () => {
                       </TableCell>
                       <TableCell>{expense.remarks}</TableCell>
                       <TableCell>
+                        <IconButton style={{ color: expense.paid ? 'red' : '#5aac42' }} onClick={() => handleMarkAsPaid(index)}>
+                          {expense.paid ? <CancelIcon /> : <CheckCircleIcon />}
+                        </IconButton>
                         <IconButton style={{ color: '#5aac42' }} onClick={() => handleEditExpense(index)}>
                           <EditIcon />
                         </IconButton>
@@ -586,7 +591,7 @@ const App = () => {
                 {["Ground Floor", "First Floor", "Second Floor"].map((floor) => {
                   const monthYearKey = `${selectedDate.getMonth()}-${selectedDate.getFullYear()}`;
                   const totalAmount = (expenses[monthYearKey] || [])
-                    .filter((expense) => expense.selectedFloors.includes(floor))
+                    .filter((expense) => expense.selectedFloors.includes(floor) && !expense.paid)
                     .reduce((sum, expense) => {
                       const floorCount = expense.selectedFloors.length;
                       return sum + parseFloat(expense.amount) / floorCount;
@@ -639,7 +644,7 @@ const App = () => {
                             return floor;
                           }).join(", ")}
                         </TableCell>
-                        {hasRemarks && <TableCell>{expense.remarks}</TableCell>}
+                        {hasRemarks && <TableCell>{expense.remarks ? `${expense.remarks}${expense.paid ? ' (Paid already)' : ''}` : (expense.paid ? 'Paid already' : '')}</TableCell>}
                       </TableRow>
                     ))
                   )}
@@ -661,7 +666,7 @@ const App = () => {
                   {["Ground Floor", "First Floor", "Second Floor"].map((floor) => {
                     const monthYearKey = `${selectedDate.getMonth()}-${selectedDate.getFullYear()}`;
                     const totalAmount = (expenses[monthYearKey] || [])
-                      .filter((expense) => expense.selectedFloors.includes(floor))
+                      .filter((expense) => expense.selectedFloors.includes(floor) && !expense.paid)
                       .reduce((sum, expense) => {
                         const floorCount = expense.selectedFloors.length;
                         return sum + parseFloat(expense.amount) / floorCount;
