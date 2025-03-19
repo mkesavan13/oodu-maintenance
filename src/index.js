@@ -100,7 +100,7 @@ const App = () => {
     const savedExpenses = localStorage.getItem("expenses");
     return savedExpenses ? JSON.parse(savedExpenses) : {};
   });
-  const [newExpense, setNewExpense] = useState({ title: "", amount: "", selectedFloors: ["Ground Floor", "First Floor", "Second Floor"] });
+  const [newExpense, setNewExpense] = useState({ title: "", amount: "", selectedFloors: ["Ground Floor", "First Floor", "Second Floor"], remarks: "" });
   const lastUpdated = expenses.last_updated ? new Date(parseInt(expenses.last_updated)).toLocaleString() : undefined;
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingExpenseIndex, setEditingExpenseIndex] = useState(null);
@@ -278,6 +278,7 @@ const App = () => {
     const year = selectedDate.getFullYear();
     const fileName = `Maintenance_${month}_${year}.png`;
 
+
     downloadContainer.style.display = "block"; // Make the canvas visible
     html2canvas(downloadContainer).then((canvas) => {
       downloadContainer.style.display = "none"; // Hide the canvas after capturing
@@ -306,7 +307,7 @@ const App = () => {
   };
 
   const handleOpenModal = () => {
-    setNewExpense({ title: "", amount: "", selectedFloors: [] });
+    setNewExpense({ title: "", amount: "", selectedFloors: [], remarks: "" });
     setEditingExpenseIndex(null);
     setIsModalOpen(true);
   };
@@ -341,6 +342,8 @@ const App = () => {
     setIsDeleteDialogOpen(false);
     setExpenseToDelete(null);
   };
+
+  const hasRemarks = (expenses[selectedDate.getMonth() + '-' + selectedDate.getFullYear()] || []).some(expense => expense.remarks);
 
   return (
     <GoogleOAuthProvider clientId={CLIENT_ID}>
@@ -492,6 +495,13 @@ const App = () => {
                   </MenuItem>
                 ))}
               </TextField>
+              <TextField
+                label="Remarks"
+                value={newExpense.remarks}
+                onChange={(e) => setNewExpense({ ...newExpense, remarks: e.target.value })}
+                fullWidth
+                margin="normal"
+              />
               <div style={{ display: 'flex', justifyContent: 'flex-end', alignItems: 'center', marginTop: '10px' }}>
                 <Button variant="contained" style={{ backgroundColor: '#5aac42' }} onClick={handleAddExpense}>
                   {editingExpenseIndex !== null ? "Save Changes" : "Add Expense"}
@@ -519,6 +529,7 @@ const App = () => {
                   <TableCell>Title</TableCell>
                   <TableCell>Amount</TableCell>
                   <TableCell>Floors</TableCell>
+                  <TableCell>Remarks</TableCell>
                   <TableCell>Actions</TableCell>
                 </TableRow>
               </TableHead>
@@ -545,6 +556,7 @@ const App = () => {
                           return floor;
                         }).join(", ")}
                       </TableCell>
+                      <TableCell>{expense.remarks}</TableCell>
                       <TableCell>
                         <IconButton style={{ color: '#5aac42' }} onClick={() => handleEditExpense(index)}>
                           <EditIcon />
@@ -603,6 +615,7 @@ const App = () => {
                     <TableCell>Title</TableCell>
                     <TableCell>Amount</TableCell>
                     <TableCell>Floors</TableCell>
+                    {hasRemarks && <TableCell>Remarks</TableCell>}
                   </TableRow>
                 </TableHead>
                 <TableBody>
@@ -626,6 +639,7 @@ const App = () => {
                             return floor;
                           }).join(", ")}
                         </TableCell>
+                        {hasRemarks && <TableCell>{expense.remarks}</TableCell>}
                       </TableRow>
                     ))
                   )}
