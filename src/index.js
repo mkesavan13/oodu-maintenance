@@ -7,17 +7,19 @@ import { gapi } from "gapi-script";
 import html2canvas from "html2canvas";
 import { LocalizationProvider, DatePicker } from "@mui/x-date-pickers";
 import { AdapterDateFns } from "@mui/x-date-pickers/AdapterDateFns";
-import { Modal, Box, IconButton, Dialog, DialogActions, DialogContent, DialogContentText, DialogTitle, Popover } from "@mui/material";
+import { Modal, Box, IconButton, Dialog, DialogActions, DialogContent, DialogContentText, DialogTitle, Popover, Menu as MuiMenu } from "@mui/material";
 import CloseIcon from '@mui/icons-material/Close';
 import AddIcon from '@mui/icons-material/Add';
-import { 
-  Edit as EditIcon, 
+import {
+  Edit as EditIcon,
   Delete as DeleteIcon,
   Google as GoogleIcon,
   Download as DownloadIcon,
-  CheckCircle as CheckCircleIcon,
-  Cancel as CancelIcon
-} from '@mui/icons-material';
+  Check as CheckIcon,
+  Cancel as CancelIcon,
+  MoreVert as MoreVertIcon,
+} from "@mui/icons-material";
+import { Grid, Card, CardContent, Typography, Chip } from "@mui/material";
 import {
   Button,
   TextField,
@@ -109,6 +111,7 @@ const App = () => {
   const [expenseToDelete, setExpenseToDelete] = useState(null);
 
   const [syncError, setSyncError] = useState(false);
+  const [menuAnchorEls, setMenuAnchorEls] = useState({});
 
   const syncData = async () => {
     setSyncError(false);
@@ -523,93 +526,87 @@ const App = () => {
 
           <div id="download-container">
           <h2>Monthly Maintenance Breakup - {months[selectedDate.getMonth()]} {selectedDate.getFullYear()}</h2>
-          <TableContainer component={Paper} style={{ marginTop: "20px" }}>
-            <Table id="expense-table">
-              <TableHead>
-                <TableRow>
-                  <TableCell>Sl. No.</TableCell>
-                  <TableCell>Title</TableCell>
-                  <TableCell>Amount</TableCell>
-                  <TableCell>Floors</TableCell>
-                  <TableCell>Remarks</TableCell>
-                  <TableCell>Actions</TableCell>
-                </TableRow>
-              </TableHead>
-              <TableBody>
-                {(!expenses[selectedDate.getMonth() + '-' + selectedDate.getFullYear()] || expenses[selectedDate.getMonth() + '-' + selectedDate.getFullYear()].length === 0) ? (
-                  <TableRow>
-                    <TableCell colSpan={5} align="center">
-                      <Button variant="contained" style={{ backgroundColor: '#5aac42' }} onClick={handleOpenModal}>
-                        Add Expenses
-                      </Button>
-                    </TableCell>
-                  </TableRow>
-                ) : (
-                  (expenses[selectedDate.getMonth() + '-' + selectedDate.getFullYear()] || []).map((expense, index) => (
-                    <TableRow key={index}>
-                      <TableCell>{index + 1}</TableCell>
-                      <TableCell>{expense.title}</TableCell>
-                      <TableCell>{expense.amount}</TableCell>
-                      <TableCell>
-                        {["Ground Floor", "First Floor", "Second Floor"].filter(floor => expense.selectedFloors.includes(floor)).map(floor => {
-                          if (floor === "Ground Floor") return "G";
-                          if (floor === "First Floor") return "1";
-                          if (floor === "Second Floor") return "2";
-                          return floor;
-                        }).join(", ")}
-                      </TableCell>
-                      <TableCell>{expense.remarks}</TableCell>
-                      <TableCell>
-                        <IconButton style={{ color: expense.paid ? 'red' : '#5aac42' }} onClick={() => handleMarkAsPaid(index)}>
-                          {expense.paid ? <CancelIcon /> : <CheckCircleIcon />}
-                        </IconButton>
-                        <IconButton style={{ color: '#5aac42' }} onClick={() => handleEditExpense(index)}>
-                          <EditIcon />
-                        </IconButton>
-                        <IconButton style={{ color: 'red' }} onClick={() => openDeleteDialog(index)}>
-                          <DeleteIcon />
-                        </IconButton>
-                      </TableCell>
-                    </TableRow>
-                  ))
-                )}
-              </TableBody>
-            </Table>
-          </TableContainer>
+          <Grid container spacing={2} style={{ marginTop: "20px" }}>
+            {(!expenses[selectedDate.getMonth() + '-' + selectedDate.getFullYear()] || expenses[selectedDate.getMonth() + '-' + selectedDate.getFullYear()].length === 0) ? (
+              <Grid item xs={12}>
+                <Button variant="contained" style={{ backgroundColor: '#5aac42' }} onClick={handleOpenModal}>
+                  Add Expenses
+                </Button>
+              </Grid>
+            ) : (
+              (expenses[selectedDate.getMonth() + '-' + selectedDate.getFullYear()] || []).map((expense, index) => (
+                <Grid item xs={12} sm={6} md={4} key={index}>
+                  <Card>
+                    <CardContent
+                      style={{
+                        position: 'relative'
+                      }}
+                    >
+                      <Typography variant="h6" style={{ display: 'flex', alignItems: 'center' }}>
+                        {expense.title}
+                        {expense.paid && <CheckIcon style={{ color: '#5aac42', marginLeft: '8px' }} />}
+                      </Typography>
+                      <Typography style={{ fontSize: '1rem', fontWeight: 'bold' }}>Rs. {expense.amount}/-</Typography>
+                      <Typography style={{ fontSize: '1rem' }}>{expense.remarks || "No Remarks"}</Typography>
+                      <div>
+                        {expense.selectedFloors.map((floor, index) => (
+                          <Chip key={index} label={floor} style={{ margin: "2px", marginTop: "5px" }} />
+                        ))}
+                      </div>
+                      <IconButton
+                        style={{ position: 'absolute', top: '10px', right: '10px' }}
+                        onClick={(event) => setMenuAnchorEls({ ...menuAnchorEls, [index]: event.currentTarget })}
+                      >
+                        <MoreVertIcon />
+                      </IconButton>
+                      <MuiMenu
+                        anchorEl={menuAnchorEls[index]}
+                        open={Boolean(menuAnchorEls[index])}
+                        onClose={() => setMenuAnchorEls({ ...menuAnchorEls, [index]: null })}
+                      >
+                        <MuiMenuItem onClick={() => { handleMarkAsPaid(index); setMenuAnchorEls({ ...menuAnchorEls, [index]: null }); }}>
+                          {expense.paid ? <CancelIcon style={{ marginRight: '8px' }} /> : <CheckIcon style={{ marginRight: '8px' }} />}
+                          {!expense.paid ? "Mark as Paid" : "Mark as Not Paid"}
+                        </MuiMenuItem>
+                        <MuiMenuItem onClick={() => { handleEditExpense(index); setMenuAnchorEls({ ...menuAnchorEls, [index]: null }); }}>
+                          <EditIcon style={{ marginRight: '8px' }} />
+                          Edit
+                        </MuiMenuItem>
+                        <MuiMenuItem onClick={() => { openDeleteDialog(index); setMenuAnchorEls({ ...menuAnchorEls, [index]: null }); }}>
+                          <DeleteIcon style={{ marginRight: '8px' }} />
+                          Delete
+                        </MuiMenuItem>
+                      </MuiMenu>
+                    </CardContent>
+                  </Card>
+                </Grid>
+              ))
+            )}
+          </Grid>
 
           <h2>Floor-wise Maintenance Breakup</h2>
-          <TableContainer component={Paper} style={{ marginTop: "20px" }}>
-            <Table id="floor-table">
-              <TableHead>
-                <TableRow>
-                  <TableCell>Floor</TableCell>
-                  <TableCell>Amount</TableCell>
-                  <TableCell>Round off</TableCell>
-                </TableRow>
-              </TableHead>
-              <TableBody>
-                {["Ground Floor", "First Floor", "Second Floor"].map((floor) => {
-                  const monthYearKey = `${selectedDate.getMonth()}-${selectedDate.getFullYear()}`;
-                  const totalAmount = (expenses[monthYearKey] || [])
-                    .filter((expense) => expense.selectedFloors.includes(floor) && !expense.paid)
-                    .reduce((sum, expense) => {
-                      const floorCount = expense.selectedFloors.length;
-                      return sum + parseFloat(expense.amount) / floorCount;
-                    }, 0);
-                  const roundedAmount = Math.round(totalAmount);
-                  return (
-                    <TableRow key={floor}>
-                      <TableCell>
-                        {floor === "Ground Floor" ? "G" : floor === "First Floor" ? "1" : floor === "Second Floor" ? "2" : floor}
-                      </TableCell>
-                      <TableCell>{totalAmount.toFixed(2)}</TableCell>
-                      <TableCell>{roundedAmount}</TableCell>
-                    </TableRow>
-                  );
-                })}
-              </TableBody>
-            </Table>
-          </TableContainer>
+          <Grid container spacing={2} style={{ marginTop: "20px" }}>
+            {["Ground Floor", "First Floor", "Second Floor"].map((floor) => {
+              const monthYearKey = `${selectedDate.getMonth()}-${selectedDate.getFullYear()}`;
+              const totalAmount = (expenses[monthYearKey] || [])
+                .filter((expense) => expense.selectedFloors.includes(floor) && !expense.paid)
+                .reduce((sum, expense) => {
+                  const floorCount = expense.selectedFloors.length;
+                  return sum + parseFloat(expense.amount) / floorCount;
+                }, 0);
+              const roundedAmount = Math.round(totalAmount);
+              return (
+                <Grid item xs={12} sm={6} md={4} key={floor}>
+                  <Card>
+                    <CardContent>
+                      <Typography variant="h6">{floor}</Typography>
+                      <Typography style={{ fontSize: '1rem', fontWeight: 'bold' }}>Rs. {roundedAmount}/- (Rounded Off)</Typography>
+                    </CardContent>
+                  </Card>
+                </Grid>
+              );
+            })}
+          </Grid>
           <div id="download-canvas" style={{ display: "none", position: "absolute", top: 0, left: 0, border: "1px solid black", padding: "20px", width: "800px" }}>
             <h2>Thiruvanmiyur Monthly Maintenance - {months[selectedDate.getMonth()]} {selectedDate.getFullYear()}</h2>
             <TableContainer component={Paper} style={{ marginTop: "20px", boxShadow: "none" }}>
@@ -687,7 +684,7 @@ const App = () => {
             </TableContainer>
           </div>
 
-          <Button variant="contained" style={{ backgroundColor: '#5aac42', marginTop: "10px" }} onClick={handleDownload} startIcon={<DownloadIcon />}>
+          <Button variant="contained" style={{ backgroundColor: '#5aac42', marginTop: "10px" }} onClick={handleDownload} startIcon={<DownloadIcon />} disabled={!(expenses[selectedDate.getMonth() + '-' + selectedDate.getFullYear()] && expenses[selectedDate.getMonth() + '-' + selectedDate.getFullYear()].length > 0)} sx={{ '&.Mui-disabled': { backgroundColor: '#d3d3d3 !important' } }}>
             Download Image
           </Button>
           </div>
