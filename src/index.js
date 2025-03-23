@@ -18,9 +18,9 @@ import {
   Google as GoogleIcon,
   Download as DownloadIcon,
 } from "@mui/icons-material";
-import { CalendarArea } from "./styled";
+import { CalendarArea } from "./utils/styled";
 import HeaderComponent from "./components/header";
-import { months, SCOPES, CLIENT_ID } from "./constants";
+import { months, SCOPES, CLIENT_ID } from "./utils/constants";
 import AddExpenseModal from "./components/addExpense";
 import DownloadCanvas from "./components/downloadCanvas";
 import BreakupArea from "./components/breakupArea";
