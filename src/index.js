@@ -24,7 +24,7 @@ import { months, SCOPES, CLIENT_ID } from "./constants";
 import AddExpenseModal from "./components/addExpense";
 import DownloadCanvas from "./components/downloadCanvas";
 import BreakupArea from "./components/breakupArea";
-import { start, syncData } from "./utils";
+import { start, syncData } from "./utils/utils";
 
 const App = () => {
   const [gapiReady, setGapiReady] = useState(false);
