@@ -41,7 +41,6 @@ const App = () => {
 
       if (!lastSyncTime || (currentTime - lastSyncTime) > twentyFourHours) {
         syncData(gapi, setSyncError, setIsSyncModalOpen, setPopoverAnchorEl, setExpenses);
-        localStorage.setItem("lastSyncTime", currentTime.toString());
       }
     }
   }, [gapiReady]);

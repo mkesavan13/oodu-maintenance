@@ -128,6 +128,7 @@ export async function syncData(gapi, setSyncError, setIsSyncModalOpen, setPopove
           }
         );
       }
+      localStorage.setItem("lastSyncTime", new Date().getTime().toString());
       setIsSyncModalOpen(false);
     } catch (error) {
       console.error("Error syncing data:", error);
