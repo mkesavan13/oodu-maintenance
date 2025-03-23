@@ -23,12 +23,24 @@ export async function start(gapi, CLIENT_ID, SCOPES) {
     }
 }
 
+async function refreshAccessToken(gapi) {
+  const authInstance = gapi.auth2.getAuthInstance();
+  const currentUser = authInstance.currentUser.get();
+  await currentUser.reloadAuthResponse();
+  const newAccessToken = currentUser.getAuthResponse().access_token;
+  localStorage.setItem("accessToken", newAccessToken);
+  return newAccessToken;
+}
+
 export async function syncData(gapi, setSyncError, setIsSyncModalOpen, setPopoverAnchorEl, setExpenses) {
-    setSyncError(false);
-    setIsSyncModalOpen(true);
-    setPopoverAnchorEl(null);
-    const localExpenses = JSON.parse(localStorage.getItem("expenses"));
-    const accessToken = gapi.auth2.getAuthInstance().currentUser.get().getAuthResponse().access_token;
+  let accessToken = localStorage.getItem("accessToken");
+  if (!accessToken) {
+    accessToken = await refreshAccessToken(gapi);
+  }
+  setSyncError(false);
+  setIsSyncModalOpen(true);
+  setPopoverAnchorEl(null);
+  const localExpenses = JSON.parse(localStorage.getItem("expenses"));
 
     try {
       const response = await fetch(
@@ -117,9 +129,6 @@ export async function syncData(gapi, setSyncError, setIsSyncModalOpen, setPopove
         );
       }
       setIsSyncModalOpen(false);
-      if (!syncError) {
-        setIsSyncModalOpen(false);
-      }
     } catch (error) {
       console.error("Error syncing data:", error);
       setIsSyncModalOpen(false);

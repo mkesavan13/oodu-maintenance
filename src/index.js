@@ -33,6 +33,19 @@ const App = () => {
     gapi.load("client:auth2", () => start(gapi, CLIENT_ID, SCOPES).then(() => setGapiReady(true)));
   }, []);
 
+  useEffect(() => {
+    if (gapiReady) {
+      const lastSyncTime = localStorage.getItem("lastSyncTime");
+      const currentTime = new Date().getTime();
+      const twentyFourHours = 24 * 60 * 60 * 1000;
+
+      if (!lastSyncTime || (currentTime - lastSyncTime) > twentyFourHours) {
+        syncData(gapi, setSyncError, setIsSyncModalOpen, setPopoverAnchorEl, setExpenses);
+        localStorage.setItem("lastSyncTime", currentTime.toString());
+      }
+    }
+  }, [gapiReady]);
+
   const [user, setUser] = useState(() => {
     const savedUser = localStorage.getItem("user");
     return savedUser ? JSON.parse(savedUser) : null;
@@ -63,7 +76,7 @@ const App = () => {
       };
       setUser(profile);
       localStorage.setItem("user", JSON.stringify(profile));
-      const accessToken = response.xc.access_token;
+      const accessToken = response.xc.access_token || await refreshAccessToken(gapi);
       localStorage.setItem("accessToken", accessToken);
       syncData(gapi, setSyncError, setIsSyncModalOpen, setPopoverAnchorEl, setExpenses);
       console.log("Access Token from gapi (handleLoginSuccess):", accessToken);
