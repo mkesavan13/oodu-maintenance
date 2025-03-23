@@ -58,6 +58,7 @@ const App = () => {
   });
   const [newExpense, setNewExpense] = useState({ title: "", amount: "", selectedFloors: ["Ground Floor", "First Floor", "Second Floor"], remarks: "", paid: false });
   const lastUpdated = expenses.last_updated ? new Date(parseInt(expenses.last_updated)).toLocaleString() : undefined;
+  const lastSynced = localStorage.getItem("lastSyncTime") ? new Date(parseInt(localStorage.getItem("lastSyncTime"))).toLocaleString() : undefined;
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingExpenseIndex, setEditingExpenseIndex] = useState(null);
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
@@ -242,7 +243,8 @@ const App = () => {
             />
             </LocalizationProvider>
             <div style={{ marginLeft: "20px", fontSize: "12px", color: "gray" }}>
-              <strong>Last updated:</strong> {lastUpdated}
+              <strong>Last updated:</strong> {lastUpdated}<br />
+              <strong>Last synced:</strong> {lastSynced}
             </div>
           </CalendarArea>
           <div style={{ padding: "20px" }}>
