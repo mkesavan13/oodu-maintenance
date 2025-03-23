@@ -34,7 +34,7 @@ const App = () => {
   }, []);
 
   useEffect(() => {
-    if (gapiReady) {
+    if (gapiReady && user) {
       const lastSyncTime = localStorage.getItem("lastSyncTime");
       const currentTime = new Date().getTime();
       const twentyFourHours = 24 * 60 * 60 * 1000;
