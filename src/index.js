@@ -92,11 +92,20 @@ const App = () => {
     try {
       googleLogout();
       await syncData(gapi, setSyncError, setIsSyncModalOpen, setPopoverAnchorEl, setExpenses);
+      const authInstance = gapi.auth2.getAuthInstance();
+      if (authInstance) {
+        await authInstance.signOut();
+      }
       localStorage.removeItem("accessToken");
       localStorage.removeItem("expenses");
       setUser(null);
       localStorage.removeItem("user");
       setIsLogoutDialogOpen(false);
+      if (worker) {
+        worker.terminate();
+        worker = null;
+      }
+      window.location.reload();
     } catch (error) {
       console.error("Error during logout:", error);
       localStorage.removeItem("accessToken");

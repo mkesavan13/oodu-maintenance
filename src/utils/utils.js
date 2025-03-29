@@ -1,26 +1,49 @@
 export async function start(gapi, CLIENT_ID, SCOPES) {
-    try {
-      await gapi.auth2.init({
-        client_id: CLIENT_ID,
-        scope: SCOPES,
-      });
-
+  let worker = new Worker(new URL('./keepAliveWorker.js', import.meta.url));
+  worker.addEventListener('message', (event) => {
+    console.log('Main thread received message from worker:', event.data);
+    if (event.data === 'keepAlive') {
       const authInstance = gapi.auth2.getAuthInstance();
-      authInstance.isSignedIn.listen((isSignedIn) => {
-        if (isSignedIn) {
-          const currentUser = authInstance.currentUser.get();
-          const authResponse = currentUser.getAuthResponse();
-          const accessToken = authResponse.access_token;
-          localStorage.setItem("accessToken", accessToken);
-          console.log("Access Token from gapi (useEffect):", accessToken);
-        } else {
-          localStorage.removeItem("accessToken");
-          console.log("User signed out from gapi");
+      const currentUser = authInstance.currentUser.get();
+      if (currentUser && currentUser.isSignedIn()) {
+        currentUser.reloadAuthResponse().then(() => {
+          console.log('gapi session refreshed');
+        }).catch((error) => {
+          console.error('Error refreshing gapi session:', error);
+        });
+        worker.postMessage('start');
+      } else {
+        if (worker) {
+          worker.terminate();
+          worker = null;
         }
-      });
-    } catch (error) {
-      console.error("Error initializing gapi:", error);
+        console.log('User is not signed in');
+      }
     }
+  });
+  try {
+    await gapi.auth2.init({
+      client_id: CLIENT_ID,
+      scope: SCOPES,
+    });
+
+    const authInstance = gapi.auth2.getAuthInstance();
+    authInstance.isSignedIn.listen((isSignedIn) => {
+      if (isSignedIn) {
+        const currentUser = authInstance.currentUser.get();
+        const authResponse = currentUser.getAuthResponse();
+        const accessToken = authResponse.access_token;
+        localStorage.setItem("accessToken", accessToken);
+        console.log("Access Token from gapi (useEffect):", accessToken);
+        worker.postMessage('start');
+      } else {
+        localStorage.removeItem("accessToken");
+        console.log("User signed out from gapi");
+      }
+    });
+  } catch (error) {
+    console.error("Error initializing gapi:", error);
+  }
 }
 
 async function refreshAccessToken(gapi) {
