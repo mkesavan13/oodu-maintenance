@@ -208,6 +208,7 @@ const App = () => {
         setExpenses={setExpenses}
         openLogoutDialog={openLogoutDialog}
         popoverAnchorEl={popoverAnchorEl}
+        setSelectedDate={setSelectedDate}
       />
       {!user ? (
         <div style={{ display: "flex", justifyContent: "center", alignItems: "center", height: "80vh" }}>

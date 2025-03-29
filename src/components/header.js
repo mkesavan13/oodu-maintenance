@@ -3,10 +3,15 @@ import { Avatar, Box, Button, Popover } from "@mui/material";
 import { Header } from "../utils/styled";
 import { syncData } from "../utils/utils";
 
-const HeaderComponent = ({ user, gapi, setSyncError, setIsSyncModalOpen, setPopoverAnchorEl: setPopoverAnchorElHandler, setExpenses, openLogoutDialog, popoverAnchorEl, setPopoverAnchorEl }) => {
+const HeaderComponent = ({ user, gapi, setSyncError, setIsSyncModalOpen, setPopoverAnchorEl: setPopoverAnchorElHandler, setExpenses, openLogoutDialog, popoverAnchorEl, setPopoverAnchorEl, setSelectedDate }) => {
   return (
     <Header>
-      <div>Oodu Maintenance</div>
+      <div>
+        <div style={{ display: "flex", alignItems: "center", cursor: "pointer" }} onClick={() => setSelectedDate(new Date())}>
+          <img src="icons/icon-192x192.png" alt="Logo" style={{ height: "40px", marginRight: "10px" }} />
+          Maintenance App
+        </div>
+      </div>
       {user && (
         <div>
           <Avatar
