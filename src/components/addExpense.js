@@ -1,9 +1,18 @@
-import React from "react";
+import React, { useState, useEffect } from "react";
 import { Modal, Box, IconButton, TextField, MenuItem, Button } from "@mui/material";
 import CloseIcon from '@mui/icons-material/Close';
-import { floors } from "../utils/constants";
 
 const AddExpenseModal = ({ isModalOpen, handleCloseModal, newExpense, setNewExpense, handleAddExpense, editingExpenseIndex }) => {
+  const [labels, setLabels] = useState([]);
+
+  useEffect(() => {
+    const savedSettings = localStorage.getItem('settings');
+    if (savedSettings) {
+      const { labels } = JSON.parse(savedSettings);
+      setLabels(labels);
+    }
+  }, []);
+
   return (
     <Modal
       open={isModalOpen}
@@ -59,16 +68,16 @@ const AddExpenseModal = ({ isModalOpen, handleCloseModal, newExpense, setNewExpe
         />
         <TextField
           select
-          label="Select Floors"
+          label="Who pays?"
           value={newExpense.selectedFloors}
           onChange={(e) => setNewExpense({ ...newExpense, selectedFloors: e.target.value })}
           fullWidth
           margin="normal"
           SelectProps={{ multiple: true }}
         >
-          {floors.map((floor) => (
-            <MenuItem key={floor} value={floor}>
-              {floor}
+          {labels.map((label, index) => (
+            <MenuItem key={index} value={label}>
+              {label}
             </MenuItem>
           ))}
         </TextField>

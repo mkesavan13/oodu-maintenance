@@ -55,13 +55,76 @@ async function refreshAccessToken(gapi) {
   return newAccessToken;
 }
 
+export async function fetchSettings(gapi) {
+  let accessToken = localStorage.getItem("accessToken");
+  if (!accessToken) {
+    accessToken = await refreshAccessToken(gapi);
+  }
+
+  try {
+    const response = await fetch(
+      "https://www.googleapis.com/drive/v3/files?q=name='settings-oodu.json'&spaces=drive",
+      {
+        method: "GET",
+        headers: new Headers({ Authorization: "Bearer " + accessToken }),
+      }
+    );
+
+    const result = await response.json();
+    const fileId = result.files && result.files.length ? result.files[0].id : null;
+
+    if (fileId) {
+      const fileResponse = await fetch(
+        `https://www.googleapis.com/drive/v3/files/${fileId}?alt=media`,
+        {
+          method: "GET",
+          headers: new Headers({ Authorization: "Bearer " + accessToken }),
+        }
+      );
+
+      const settings = await fileResponse.json();
+      localStorage.setItem("settings", JSON.stringify(settings));
+    } else {
+      const defaultSettings = {
+        numSplits: 3,
+        labels: ['Ground Floor', 'First Floor', 'Second Floor'],
+      };
+      localStorage.setItem("settings", JSON.stringify(defaultSettings));
+
+      const blob = new Blob([JSON.stringify(defaultSettings)], { type: "application/json" });
+      const metadata = {
+        name: "settings-oodu.json",
+        mimeType: "application/json",
+      };
+
+      const form = new FormData();
+      form.append(
+        "metadata",
+        new Blob([JSON.stringify(metadata)], { type: "application/json" })
+      );
+      form.append("file", blob);
+
+      await fetch(
+        "https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart&fields=id",
+        {
+          method: "POST",
+          headers: new Headers({ Authorization: "Bearer " + accessToken }),
+          body: form,
+        }
+      );
+    }
+  } catch (error) {
+    console.error("Error fetching settings:", error);
+  }
+}
+
 export async function syncData(gapi, setSyncError, setIsSyncModalOpen, setPopoverAnchorEl, setExpenses) {
+  setIsSyncModalOpen(true);
   let accessToken = localStorage.getItem("accessToken");
   if (!accessToken) {
     accessToken = await refreshAccessToken(gapi);
   }
   setSyncError(false);
-  setIsSyncModalOpen(true);
   setPopoverAnchorEl(null);
   const localExpenses = JSON.parse(localStorage.getItem("expenses"));
 

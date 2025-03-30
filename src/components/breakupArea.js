@@ -1,7 +1,7 @@
 import React from "react";
 import { Grid, Card, CardContent, Typography, Table, TableBody, TableCell, TableContainer, TableHead, TableRow, Paper, Chip, IconButton, Menu as MuiMenu, MenuItem as MuiMenuItem, Button } from "@mui/material";
 import MoreVertIcon from '@mui/icons-material/MoreVert';
-import { floors, months } from "../utils/constants";
+import { months } from "../utils/constants";
 import {
   Edit as EditIcon,
   Delete as DeleteIcon,
@@ -10,6 +10,10 @@ import {
 } from "@mui/icons-material";
 
 const BreakupArea = ({ expenses, selectedDate, menuAnchorEls, setMenuAnchorEls, handleMarkAsPaid, handleEditExpense, openDeleteDialog, handleOpenModal }) => {
+  const [floors, setFloors] = React.useState(() => {
+    const settings = JSON.parse(localStorage.getItem('settings'));
+    return settings?.labels || [];
+  });
   return (
     <div>
       <h2>Monthly Maintenance Breakup - {months[selectedDate.getMonth()]} {selectedDate.getFullYear()}</h2>
@@ -71,7 +75,7 @@ const BreakupArea = ({ expenses, selectedDate, menuAnchorEls, setMenuAnchorEls, 
         )}
       </Grid>
 
-      <h2>Floor-wise Maintenance Breakup</h2>
+      <h2>House-wise Maintenance Breakup</h2>
       <Grid container spacing={2} style={{ marginTop: "20px" }}>
         {floors.map((floor) => {
           const monthYearKey = `${selectedDate.getMonth()}-${selectedDate.getFullYear()}`;
