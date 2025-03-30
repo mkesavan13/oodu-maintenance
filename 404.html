@@ -1,7 +1,10 @@
 <!DOCTYPE html>
 <html>
   <head>
-    <meta http-equiv="refresh" content="0; url=./">
+    <script>
+      localStorage.setItem('redirectPath', window.location.pathname);
+      window.location.replace('./');
+    </script>
   </head>
   <body>
   </body>
