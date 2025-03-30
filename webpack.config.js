@@ -53,6 +53,11 @@ module.exports = {
         compress: true,
         port: 9000,
         hot: true,
-        historyApiFallback: true,
+        historyApiFallback: {
+            disableDotRule: true,
+            rewrites: [
+                { from: /./, to: 'index.html' }
+            ],
+        },
     },
 };

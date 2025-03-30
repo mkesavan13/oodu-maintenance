@@ -46,7 +46,9 @@ const Home = ({gapi, gapiReady, syncError, isSyncModalOpen, setIsSyncModalOpen, 
       await fetchSettings(gapi);
       setIsFetchingSettings(false);
       await syncData(gapi, setSyncError, setIsSyncModalOpen, setPopoverAnchorEl, setExpenses);
-      window.location.reload();
+      const redirectPath = localStorage.getItem('redirectPath') || '/';
+      localStorage.removeItem('redirectPath');
+      window.location.href = redirectPath;
     } else {
       console.error("Login response does not contain access token");
     }

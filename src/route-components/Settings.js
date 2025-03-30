@@ -1,8 +1,10 @@
 import React, { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { TextField, Button, Box, Typography, Dialog, DialogActions, DialogContent, DialogContentText, DialogTitle, CircularProgress } from '@mui/material';
 import { fetchSettings } from '../utils/utils';
 
 const Settings = () => {
+  const navigate = useNavigate();
   const [numSplits, setNumSplits] = useState(0);
   const [labels, setLabels] = useState([]);
 
@@ -17,6 +19,13 @@ const Settings = () => {
   };
 
   useEffect(() => {
+    const user = localStorage.getItem('user');
+    if (!user) {
+      localStorage.setItem('redirectPath', '/settings');
+      navigate('/');
+      return;
+    }
+
     const savedSettings = localStorage.getItem('settings');
     if (savedSettings) {
       const { apartmentName, numSplits, labels } = JSON.parse(savedSettings);
